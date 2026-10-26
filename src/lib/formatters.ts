@@ -34,6 +34,11 @@ export function formatINR(val: string | number | null | undefined): string {
   return `${isNegative ? '-' : ''}₹${formattedInt}.${decPart}`;
 }
 
+/** Preserve decimal precision while showing the actual ledger currency. */
+export function formatMoney(value: string | number, currency: string): string {
+  return currency === 'INR' ? formatINR(value) : `${currency} ${typeof value === 'number' ? value.toFixed(2) : value}`;
+}
+
 /**
  * Formats an amount into compact Indian notation (Crores / Lakhs / Thousands)
  * for high-level summary cards.
@@ -81,6 +86,7 @@ export function formatDateTime(dateInput: string | Date | null | undefined): str
     minute: '2-digit',
     second: '2-digit',
     hour12: false,
+    timeZone: 'Asia/Kolkata',
   });
 }
 
@@ -96,5 +102,6 @@ export function formatDate(dateInput: string | Date | null | undefined): string 
     year: 'numeric',
     month: 'short',
     day: '2-digit',
+    timeZone: 'Asia/Kolkata',
   });
 }

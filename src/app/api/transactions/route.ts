@@ -2,13 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getPaginatedTransactions } from '@/lib/queries/transactions';
 import { PaginatedTransactionsResponse } from '@/types';
+import { authorizeRequest, requestSession } from '@/lib/auth';
+import { createTransfer, transferSchema, workflowFailure } from '@/lib/workflows';
+import { readGraphBody } from '@/lib/graph/api';
+import { transactionDateBoundary } from '@/lib/validation';
 
 const VALID_STATUSES = ['COMPLETED', 'PENDING', 'FLAGGED', 'REJECTED', 'CANCELLED', 'FAILED', 'ALL'] as const;
 const VALID_TYPES = ['NEFT', 'RTGS', 'IMPS', 'UPI', 'WIRE_TRANSFER', 'INTERNAL_TRANSFER', 'INTERNAL', 'ALL'] as const;
 
 const transactionsQuerySchema = z
   .object({
-    page: z.coerce.number().int().min(1, 'Page must be >= 1').default(1),
+    page: z.coerce.number().int().min(1, 'Page must be >= 1').max(100000).default(1),
     pageSize: z.coerce.number().int().min(1, 'Page size must be >= 1').max(100, 'Page size must be <= 100').default(20),
     search: z.string().max(200, 'Search query must be at most 200 characters').optional(),
     status: z
@@ -25,20 +29,8 @@ const transactionsQuerySchema = z
       .optional(),
     minAmount: z.coerce.number().nonnegative('minAmount must be non-negative').optional(),
     maxAmount: z.coerce.number().positive('maxAmount must be positive').optional(),
-    startDate: z
-      .string()
-      .trim()
-      .refine((val) => !val || !isNaN(Date.parse(val)), {
-        message: 'Invalid startDate timestamp format',
-      })
-      .optional(),
-    endDate: z
-      .string()
-      .trim()
-      .refine((val) => !val || !isNaN(Date.parse(val)), {
-        message: 'Invalid endDate timestamp format',
-      })
-      .optional(),
+    startDate: transactionDateBoundary().optional(),
+    endDate: transactionDateBoundary(true).optional(),
     sortBy: z.enum(['occurred_at', 'amount', 'status', 'transaction_type']).default('occurred_at'),
     sortOrder: z.enum(['asc', 'desc']).default('desc'),
   })
@@ -50,7 +42,9 @@ const transactionsQuerySchema = z
       return true;
     },
     { message: 'minAmount cannot be greater than maxAmount', path: ['minAmount'] }
-  );
+  ).refine(data => !data.startDate || !data.endDate || Date.parse(data.startDate) <= Date.parse(data.endDate), {
+    message: 'startDate cannot be later than endDate', path: ['startDate'],
+  });
 
 /**
  * GET /api/transactions
@@ -60,6 +54,7 @@ const transactionsQuerySchema = z
 export async function GET(
   req: NextRequest
 ): Promise<NextResponse<PaginatedTransactionsResponse | { error: string }>> {
+  const denied = authorizeRequest(req); if (denied) return new NextResponse(denied.body, { status: denied.status, headers: denied.headers });
   try {
     const searchParams = req.nextUrl.searchParams;
     const rawParams = {
@@ -120,4 +115,12 @@ export async function GET(
       { status: 500 }
     );
   }
+}
+
+export async function POST(request: Request) {
+  const denied = authorizeRequest(request); if (denied) return denied;
+  try {
+    const result = await createTransfer(transferSchema.parse(await readGraphBody(request)), requestSession(request)?.name ?? 'API operator');
+    return Response.json(result, { status: result.replayed ? 200 : 201 });
+  } catch (error) { return workflowFailure(error); }
 }

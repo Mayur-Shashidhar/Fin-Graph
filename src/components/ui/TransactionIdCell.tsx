@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
+import Link from 'next/link';
 
 interface TransactionIdCellProps {
   id: string;
@@ -47,13 +48,13 @@ export function TransactionIdCell({ id, className = '' }: TransactionIdCellProps
 
   return (
     <div className={`inline-flex items-center gap-1.5 font-mono text-xs ${className}`}>
-      <span
+      <Link href={`/transactions/${id}`}
         className="cursor-help underline decoration-neutral-700 underline-offset-2 hover:text-white transition-colors text-neutral-300"
         title={`Full Transaction UUID: ${id}`}
         aria-label={`Full Transaction ID: ${id}`}
       >
         {shortId}
-      </span>
+      </Link>
       <button
         type="button"
         onClick={handleCopy}

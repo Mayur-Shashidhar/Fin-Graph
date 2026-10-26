@@ -71,7 +71,6 @@ export async function getPaginatedTransactions(
 ): Promise<PaginatedTransactionsResponse> {
   const page = Math.max(1, options.page || 1);
   const pageSize = Math.max(1, Math.min(options.pageSize || 20, 100));
-  const offset = (page - 1) * pageSize;
 
   const conditions: string[] = [];
   const params: unknown[] = [];
@@ -148,7 +147,8 @@ export async function getPaginatedTransactions(
   const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
   // Clamped Offset
-  const validOffset = page > totalPages ? 0 : offset;
+  const validPage = Math.min(page, totalPages);
+  const validOffset = (validPage - 1) * pageSize;
 
   // Data Query with Pagination
   params.push(pageSize);
@@ -187,7 +187,7 @@ export async function getPaginatedTransactions(
   return {
     data: dataResult.rows,
     pagination: {
-      page: Math.min(page, totalPages),
+      page: validPage,
       pageSize,
       totalCount,
       totalPages,

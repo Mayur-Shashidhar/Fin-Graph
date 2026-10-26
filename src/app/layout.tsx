@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import { Sidebar, Header } from '@/components/layout';
+import { AppShell } from '@/components/layout/AppShell';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -29,13 +30,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-black text-neutral-100 font-sans antialiased flex flex-col`}
       >
-        <Sidebar />
-        <div className="flex min-h-screen flex-1 flex-col lg:pl-72">
-          <Header />
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-            {children}
-          </main>
-        </div>
+        <Suspense fallback={<main className="p-12 text-sm text-neutral-500">Loading workspace…</main>}><AppShell>{children}</AppShell></Suspense>
       </body>
     </html>
   );

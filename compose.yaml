@@ -1,0 +1,82 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fingraph_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run npm run setup first}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fingraph_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  neo4j:
+    image: neo4j:5.26
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?Set NEO4J_PASSWORD}
+      NEO4J_server_memory_heap_initial__size: 256m
+      NEO4J_server_memory_heap_max__size: 512m
+      NEO4J_server_memory_pagecache_size: 256m
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+  init:
+    build:
+      context: .
+      target: worker
+    environment: &backend_env
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/fingraph_db
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USERNAME: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      NEO4J_DATABASE: neo4j
+      GRAPH_API_TOKEN: ${GRAPH_API_TOKEN:?Set GRAPH_API_TOKEN}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    command: ["node", "--conditions=react-server", "--import", "tsx", "scripts/initialize.ts"]
+  app:
+    build:
+      context: .
+      target: app
+    environment:
+      <<: *backend_env
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+  worker:
+    build:
+      context: .
+      target: worker
+    environment: *backend_env
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    command: ["node", "--conditions=react-server", "--import", "tsx", "scripts/graph.ts", "worker"]
+    restart: unless-stopped
+volumes:
+  postgres_data:
+  neo4j_data:
