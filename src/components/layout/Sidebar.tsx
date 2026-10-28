@@ -27,9 +27,9 @@ interface NavItem {
 const navItems: NavItem[] = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Transactions', href: '/transactions', icon: ArrowLeftRight },
-  { name: 'Graph Analysis', href: '/graph-analysis', icon: Network, tag: 'Sprint 3' },
-  { name: 'Alerts', href: '/alerts', icon: ShieldAlert, tag: 'Roadmap' },
-  { name: 'Detection Rules', href: '/detection-rules', icon: Sliders, tag: 'Roadmap' },
+  { name: 'Graph Analysis', href: '/graph-analysis', icon: Network },
+  { name: 'Alerts', href: '/alerts', icon: ShieldAlert },
+  { name: 'Detection Rules', href: '/detection-rules', icon: Sliders },
 ];
 
 export function Sidebar() {
@@ -53,6 +53,8 @@ export function Sidebar() {
           onClick={() => setMobileOpen(!mobileOpen)}
           className="rounded-lg p-2 text-neutral-400 hover:bg-neutral-900 hover:text-white transition-colors"
           aria-label="Toggle navigation menu"
+          aria-expanded={mobileOpen}
+          aria-controls="fingraph-navigation"
         >
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
@@ -68,8 +70,9 @@ export function Sidebar() {
 
       {/* Sidebar Container */}
       <aside
+        id="fingraph-navigation"
         className={`fixed top-0 bottom-0 left-0 z-50 flex w-72 flex-col border-r border-neutral-800 bg-neutral-950 transition-transform duration-200 ease-in-out lg:translate-x-0 ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+          mobileOpen ? 'translate-x-0 visible' : '-translate-x-full invisible lg:visible'
         }`}
       >
         {/* Branding */}
@@ -82,7 +85,7 @@ export function Sidebar() {
               <div className="flex items-center gap-1.5">
                 <span className="text-base font-semibold tracking-tight text-white">FinGraph</span>
                 <span className="rounded bg-neutral-900 px-1.5 py-0.5 text-[9px] font-mono font-medium text-neutral-300 border border-neutral-800">
-                  v0.2
+                  v1.0
                 </span>
               </div>
               <p className="text-[10px] font-medium uppercase tracking-widest text-neutral-400">
@@ -92,6 +95,7 @@ export function Sidebar() {
           </Link>
           <button
             onClick={() => setMobileOpen(false)}
+            aria-label="Close navigation menu"
             className="lg:hidden text-neutral-400 hover:text-white"
           >
             <X className="h-5 w-5" />
@@ -159,7 +163,7 @@ export function Sidebar() {
                 <Activity className="h-3.5 w-3.5 text-neutral-400" />
                 Graph Engine
               </span>
-              <span className="font-mono text-[11px] text-neutral-400">Planned</span>
+              <span className="font-mono text-[11px] text-neutral-400">Graph analytics</span>
             </div>
           </div>
         </div>

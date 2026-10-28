@@ -1,0 +1,53 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+
+// Mutating smoke test: deliberately restricted to the synthetic local demo.
+const base='http://127.0.0.1:3000';
+const key=(await readFile('.data/demo-access-key','utf8')).trim();
+const health=await (await fetch(base+'/api/health')).json();
+assert.equal(health.mode,'demo','Start npm run demo before running the smoke test.');
+let cookie='';
+async function call(url,method='GET',body,expected=200){
+  const response=await fetch(base+url,{method,headers:{'Content-Type':'application/json',origin:base,...(cookie?{cookie}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});
+  const result=await response.json();assert.equal(response.status,expected,`${method} ${url}: ${JSON.stringify(result)}`);
+  return {response,result};
+}
+await call('/api/graph','GET',undefined,401);
+const signed=await call('/api/auth/session','POST',{name:'Demo QA',key});
+cookie=signed.response.headers.get('set-cookie').split(';')[0];
+const system=(await call('/api/system')).result;assert.equal(system.demo,true);
+const malformed=await fetch(base+'/api/alerts',{headers:{cookie:'fingraph_session=abc.'+'é'.repeat(43)}});assert.equal(malformed.status,401);
+await call('/api/transactions?startDate=2026-03-12&endDate=2026-03-11','GET',undefined,400);
+await call('/api/transactions?startDate=2026-02-30','GET',undefined,400);
+const day=(await call('/api/transactions?startDate=2026-03-11&endDate=2026-03-11&pageSize=100')).result;
+assert.ok(day.data.length>0);assert.ok(day.data.every(t=>Date.parse(t.occurred_at)>=Date.parse('2026-03-11T00:00:00Z')&&Date.parse(t.occurred_at)<=Date.parse('2026-03-11T23:59:59.999Z')));
+const beyond=(await call('/api/transactions?page=999&pageSize=17&sortOrder=asc')).result;
+const last=(await call('/api/transactions?page='+beyond.pagination.totalPages+'&pageSize=17&sortOrder=asc')).result;
+assert.deepEqual(beyond.data.map(t=>t.id),last.data.map(t=>t.id));
+const accounts=(await call('/api/accounts')).result.data;assert.equal(accounts.length,60);
+const graph=(await call('/api/graph?accountId='+accounts[0].id+'&depth=2&limit=100')).result;assert.ok(graph.nodes.length>0);
+const rules=(await call('/api/detection/rules')).result.data;
+const rule=rules.find(r=>r.supported);
+await call('/api/detection/rules/'+rule.id,'PATCH',{enabled:rule.enabled,thresholds:{...rule.effectiveThresholds,unknown_threshold:1},expectedUpdatedAt:rule.updated_at},400);
+const changed=(await call('/api/detection/rules/'+rule.id,'PATCH',{enabled:!rule.enabled,thresholds:rule.effectiveThresholds,expectedUpdatedAt:rule.updated_at})).result;
+await call('/api/detection/rules/'+rule.id,'PATCH',{enabled:rule.enabled,thresholds:rule.effectiveThresholds,expectedUpdatedAt:changed.updated_at});
+const alerts=(await call('/api/alerts?pageSize=100')).result.data;
+const chosen=alerts.find(a=>a.status==='NEW')??alerts[0];
+const details=(await call('/api/alerts/'+chosen.id)).result;
+const reviewed=(await call('/api/alerts/'+chosen.id,'PATCH',{status:'INVESTIGATING',note:'Synthetic end-to-end test: ledger and graph evidence reviewed.',expectedUpdatedAt:details.alert.updated_at})).result;
+assert.equal(reviewed.alert.status,'INVESTIGATING');assert.ok(reviewed.notes.length>0);assert.ok(reviewed.history.length>0);
+const available=accounts.filter(a=>a.currency==='INR'&&a.status==='ACTIVE');
+const body={idempotencyKey:randomUUID(),sourceAccountId:available[0].id,destinationAccountId:available[1].id,amount:'1234.50',currency:'INR',transactionType:'NEFT',occurredAt:new Date().toISOString(),description:'Synthetic smoke-test transfer'};
+await call('/api/transactions','POST',{...body,idempotencyKey:randomUUID(),occurredAt:'2020-01-01T00:00:00Z'},400);
+const created=(await call('/api/transactions','POST',body,201)).result;
+const replayed=(await call('/api/transactions','POST',body)).result;
+assert.equal(created.transaction.id,replayed.transaction.id);assert.equal(replayed.replayed,true);
+await call('/api/detection/run','POST',{persist:true},409);
+await call('/api/graph/sync','POST',{batchSize:500});
+const detection=(await call('/api/detection/run','POST',{persist:true})).result;assert.ok(detection.findingCount>0);
+const again=(await call('/api/detection/run','POST',{persist:true})).result;assert.equal(again.created,0);
+assert.equal((await call('/api/transactions/'+created.transaction.id)).result.transaction.id,created.transaction.id);
+assert.equal((await call('/api/accounts/'+available[0].id)).result.account.id,available[0].id);
+await call('/api/auth/session','DELETE');cookie='';await call('/api/alerts','GET',undefined,401);
+console.log('Passed: malformed-cookie rejection, date validation/inclusive ranges, last-page pagination, session protection, graph/account queries, rule validation/updates, alert review/audit, transfer-time validation/idempotency, sync, detection, duplicate prevention, transaction details, sign-out.');

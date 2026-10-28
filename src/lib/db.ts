@@ -1,6 +1,7 @@
 import 'server-only';
 import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { getValidatedEnv } from '@/lib/env';
+import { isDemo, demoPool, demoQuery, demoClient } from './demo';
 
 /**
  * Reusable PostgreSQL connection pool for FinGraph.
@@ -33,6 +34,7 @@ function initPool(): Pool {
  * Retrieves the active singleton PostgreSQL connection pool.
  */
 export function getDbPool(): Pool {
+  if (isDemo()) return demoPool();
   if (process.env.NODE_ENV === 'production') {
     if (!globalThis.__finGraphPgPool) {
       globalThis.__finGraphPgPool = initPool();
@@ -58,6 +60,7 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   params?: unknown[]
 ): Promise<QueryResult<T>> {
+  if (isDemo()) return demoQuery<T>(text, params);
   const pool = getDbPool();
   return pool.query<T>(text, params);
 }
@@ -67,6 +70,7 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
  * Remember to release the client back to the pool in a finally block!
  */
 export async function getClient(): Promise<PoolClient> {
+  if (isDemo()) return demoClient();
   const pool = getDbPool();
   return pool.connect();
 }

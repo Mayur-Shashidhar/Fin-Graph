@@ -20,7 +20,7 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Badge, Button, TransactionStatusBadge } from '@/components/ui';
 import { ActivityChart } from '@/components/dashboard/ActivityChart';
 import { DashboardResponse } from '@/types';
-import { formatINR, formatCompactINR, formatDateTime } from '@/lib/formatters';
+import { formatINR, formatCompactINR, formatDateTime, formatMoney } from '@/lib/formatters';
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardResponse | null>(null);
@@ -117,7 +117,7 @@ export default function DashboardPage() {
             <Badge variant="outline" className="font-mono text-[10px] text-neutral-300 border-neutral-700">
               PostgreSQL Monitored
             </Badge>
-            <span className="text-xs text-neutral-500 font-mono">Sprint 2 Surveillance Engine</span>
+            <span className="text-xs text-neutral-500 font-mono">Financial network surveillance</span>
           </div>
           <h2 className="text-xl font-bold tracking-tight text-white">
             Surveillance &amp; AML Intelligence Overview
@@ -352,11 +352,11 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="py-4 px-5">
             <CardTitle className="text-sm">Alert Triage Queue</CardTitle>
-            <CardDescription>Investigation state of seeded AML alerts</CardDescription>
+            <CardDescription>Investigation state of all recorded AML alerts</CardDescription>
           </CardHeader>
           <CardContent className="p-5 pt-0 space-y-2.5 text-xs font-mono">
             <div className="flex items-center justify-between py-1 border-b border-neutral-850">
-              <span className="text-neutral-400">Total Seeded Alerts:</span>
+              <span className="text-neutral-400">Total Alerts:</span>
               <span className="font-bold text-white">{summary.totalAlerts}</span>
             </div>
             <div className="flex items-center justify-between py-1 border-b border-neutral-850">
@@ -466,7 +466,7 @@ export default function DashboardPage() {
                   <th className="py-2.5 px-4">Source Account</th>
                   <th className="py-2.5 px-4">Destination Account</th>
                   <th className="py-2.5 px-4">Type</th>
-                  <th className="py-2.5 px-4 text-right">Amount (INR)</th>
+                  <th className="py-2.5 px-4 text-right">Amount</th>
                   <th className="py-2.5 px-4 text-right">Status</th>
                 </tr>
               </thead>
@@ -494,7 +494,7 @@ export default function DashboardPage() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-right font-bold text-white whitespace-nowrap">
-                      {formatINR(tx.amount)}
+                      {formatMoney(tx.amount, tx.currency)}
                     </td>
                     <td className="py-3 px-4 text-right whitespace-nowrap">
                       <TransactionStatusBadge status={tx.status} />

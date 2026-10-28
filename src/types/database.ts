@@ -93,6 +93,8 @@ export interface DetectionRule {
 export type HealthStatus = 'healthy' | 'degraded' | 'unhealthy';
 
 export interface HealthCheckResponse {
+  graph?: { connected: boolean; responseTimeMs?: number; error?: string; engine?: string };
+  mode?: 'demo' | 'live';
   status: HealthStatus;
   timestamp: string;
   service: string;

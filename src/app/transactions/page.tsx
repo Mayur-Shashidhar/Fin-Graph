@@ -26,7 +26,8 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, Badge, Button, TransactionStatusBadge, TransactionIdCell } from '@/components/ui';
 import { TransactionRecord, PaginatedTransactionsResponse } from '@/types';
-import { formatINR, formatDateTime } from '@/lib/formatters';
+import { NewTransfer } from '@/components/transactions/NewTransfer';
+import { formatMoney, formatDateTime } from '@/lib/formatters';
 
 const STATUS_OPTIONS = [
   { value: 'ALL', label: 'All Statuses' },
@@ -177,6 +178,27 @@ export default function TransactionsPage() {
         cell: ({ row }) => <TransactionIdCell id={row.original.id} />,
       },
       {
+        accessorKey: 'amount',
+        header: () => (
+          <button
+            onClick={() => handleSortToggle('amount')}
+            className="flex items-center gap-1.5 hover:text-white transition-colors ml-auto"
+          >
+            <span>Amount</span>
+            {sortBy === 'amount' ? (
+              sortOrder === 'asc' ? <ArrowUp className="h-3 w-3 text-white" /> : <ArrowDown className="h-3 w-3 text-white" />
+            ) : (
+              <ArrowUpDown className="h-3 w-3 text-neutral-500" />
+            )}
+          </button>
+        ),
+        cell: ({ row }) => (
+          <div className="text-right font-mono font-bold text-white whitespace-nowrap">
+            {formatMoney(row.original.amount, row.original.currency)}
+          </div>
+        ),
+      },
+      {
         accessorKey: 'occurred_at',
         header: () => (
           <button
@@ -243,27 +265,6 @@ export default function TransactionsPage() {
         ),
       },
       {
-        accessorKey: 'amount',
-        header: () => (
-          <button
-            onClick={() => handleSortToggle('amount')}
-            className="flex items-center gap-1.5 hover:text-white transition-colors ml-auto"
-          >
-            <span>Amount (INR)</span>
-            {sortBy === 'amount' ? (
-              sortOrder === 'asc' ? <ArrowUp className="h-3 w-3 text-white" /> : <ArrowDown className="h-3 w-3 text-white" />
-            ) : (
-              <ArrowUpDown className="h-3 w-3 text-neutral-500" />
-            )}
-          </button>
-        ),
-        cell: ({ row }) => (
-          <div className="text-right font-mono font-bold text-white whitespace-nowrap">
-            {formatINR(row.original.amount)}
-          </div>
-        ),
-      },
-      {
         accessorKey: 'status',
         header: () => (
           <div className="text-right">
@@ -314,7 +315,7 @@ export default function TransactionsPage() {
             <Badge variant="outline" className="font-mono text-[10px] text-neutral-400">
               PostgreSQL Data Table
             </Badge>
-            <span className="text-xs font-mono text-neutral-500">Sprint 2 Live Feed</span>
+            <span className="text-xs font-mono text-neutral-500">Transaction ledger</span>
           </div>
           <h2 className="text-xl font-bold tracking-tight text-white">
             Transaction Surveillance Ledger
@@ -325,6 +326,7 @@ export default function TransactionsPage() {
         </div>
 
         <div className="flex items-center gap-2.5">
+          <NewTransfer onCreated={handleManualRefresh}/>
           <Button
             variant="outline"
             size="sm"
@@ -431,7 +433,7 @@ export default function TransactionsPage() {
         {showFilters && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-neutral-850 text-xs font-mono">
             <div>
-              <label className="block text-neutral-400 mb-1 text-[11px]">Min Amount (INR)</label>
+              <label className="block text-neutral-400 mb-1 text-[11px]">Min Amount (transaction currency)</label>
               <input
                 type="number"
                 min="0"
@@ -446,7 +448,7 @@ export default function TransactionsPage() {
             </div>
 
             <div>
-              <label className="block text-neutral-400 mb-1 text-[11px]">Max Amount (INR)</label>
+              <label className="block text-neutral-400 mb-1 text-[11px]">Max Amount (transaction currency)</label>
               <input
                 type="number"
                 min="0"
@@ -461,7 +463,7 @@ export default function TransactionsPage() {
             </div>
 
             <div>
-              <label className="block text-neutral-400 mb-1 text-[11px]">Start Date</label>
+              <label className="block text-neutral-400 mb-1 text-[11px]">Start Date (UTC)</label>
               <input
                 type="date"
                 value={startDate}
@@ -474,7 +476,7 @@ export default function TransactionsPage() {
             </div>
 
             <div>
-              <label className="block text-neutral-400 mb-1 text-[11px]">End Date</label>
+              <label className="block text-neutral-400 mb-1 text-[11px]">End Date (UTC, inclusive)</label>
               <input
                 type="date"
                 value={endDate}
@@ -491,7 +493,7 @@ export default function TransactionsPage() {
 
       {/* Main Table Card */}
       <Card className="border-neutral-800 bg-neutral-950">
-        <CardContent className="p-0">
+        <CardContent className="p-0!">
           {error ? (
             <div className="py-16 text-center space-y-3">
               <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-900 border border-neutral-700 text-neutral-300">
@@ -524,7 +526,17 @@ export default function TransactionsPage() {
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div>
+              <p id="transaction-scroll-help" className="border-b border-neutral-800 px-4 py-2 text-xs text-neutral-400">
+                Scroll horizontally to view all transaction columns.
+              </p>
+              <div
+                className="overflow-x-auto rounded-b-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400"
+                role="region"
+                aria-label="Transaction ledger"
+                aria-describedby="transaction-scroll-help"
+                tabIndex={0}
+              >
               <table className="w-full text-left text-xs font-mono">
                 <thead className="border-b border-neutral-800 bg-neutral-900/60 text-neutral-400 uppercase tracking-wider text-[10px]">
                   {table.getHeaderGroups().map((headerGroup) => (
@@ -551,6 +563,7 @@ export default function TransactionsPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </CardContent>

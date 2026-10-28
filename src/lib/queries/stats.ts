@@ -31,19 +31,19 @@ export async function getDashboardSummaryMetrics(): Promise<DashboardSummary> {
   }>(`
     SELECT
       COUNT(*) AS total_transactions,
-      COALESCE(SUM(amount), 0)::text AS total_volume_inr,
+      COALESCE(SUM(amount) FILTER (WHERE currency = 'INR'), 0)::text AS total_volume_inr,
       COUNT(*) FILTER (WHERE status = 'COMPLETED') AS completed_count,
-      COALESCE(SUM(amount) FILTER (WHERE status = 'COMPLETED'), 0)::text AS completed_volume_inr,
+      COALESCE(SUM(amount) FILTER (WHERE status = 'COMPLETED' AND currency = 'INR'), 0)::text AS completed_volume_inr,
       COUNT(*) FILTER (WHERE status = 'PENDING') AS pending_count,
-      COALESCE(SUM(amount) FILTER (WHERE status = 'PENDING'), 0)::text AS pending_volume_inr,
+      COALESCE(SUM(amount) FILTER (WHERE status = 'PENDING' AND currency = 'INR'), 0)::text AS pending_volume_inr,
       COUNT(*) FILTER (WHERE status = 'FLAGGED') AS flagged_count,
-      COALESCE(SUM(amount) FILTER (WHERE status = 'FLAGGED'), 0)::text AS flagged_volume_inr,
+      COALESCE(SUM(amount) FILTER (WHERE status = 'FLAGGED' AND currency = 'INR'), 0)::text AS flagged_volume_inr,
       COUNT(*) FILTER (WHERE status = 'REJECTED') AS rejected_count,
-      COALESCE(SUM(amount) FILTER (WHERE status = 'REJECTED'), 0)::text AS rejected_volume_inr,
+      COALESCE(SUM(amount) FILTER (WHERE status = 'REJECTED' AND currency = 'INR'), 0)::text AS rejected_volume_inr,
       COUNT(*) FILTER (WHERE status = 'CANCELLED') AS cancelled_count,
-      COALESCE(SUM(amount) FILTER (WHERE status = 'CANCELLED'), 0)::text AS cancelled_volume_inr,
+      COALESCE(SUM(amount) FILTER (WHERE status = 'CANCELLED' AND currency = 'INR'), 0)::text AS cancelled_volume_inr,
       COUNT(*) FILTER (WHERE status = 'FAILED') AS failed_count,
-      COALESCE(SUM(amount) FILTER (WHERE status = 'FAILED'), 0)::text AS failed_volume_inr,
+      COALESCE(SUM(amount) FILTER (WHERE status = 'FAILED' AND currency = 'INR'), 0)::text AS failed_volume_inr,
       (SELECT COUNT(*) FROM alerts) AS total_alerts,
       (SELECT COUNT(*) FROM alerts WHERE status IN ('NEW', 'INVESTIGATING', 'ESCALATED')) AS open_alerts,
       (SELECT COUNT(*) FROM alerts WHERE severity = 'CRITICAL') AS critical_alerts,
@@ -120,7 +120,7 @@ export async function getActivityTimeline(): Promise<ActivityTimelinePoint[]> {
       COUNT(*)::text AS transaction_count,
       COUNT(*) FILTER (WHERE status = 'FLAGGED')::text AS flagged_count,
       COUNT(*) FILTER (WHERE status = 'COMPLETED')::text AS completed_count,
-      COALESCE(SUM(amount), 0)::text AS volume_inr
+      COALESCE(SUM(amount) FILTER (WHERE currency = 'INR'), 0)::text AS volume_inr
     FROM transactions
     GROUP BY DATE_TRUNC('day', occurred_at)
     ORDER BY DATE_TRUNC('day', occurred_at) ASC;
