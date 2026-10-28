@@ -22,6 +22,83 @@ same detection algorithms. It is explicitly labeled **Local synthetic demo**.
 **Neo4j is not enabled in demo mode.** There is no silent fallback when a real
 database fails.
 
+## Configured native Windows live setup
+
+This laptop now has a dedicated PostgreSQL 18 database and Neo4j Community
+2026.10.1 installation. Start the databases, application and synchronization
+worker together:
+
+```sh
+npm run live
+```
+
+Open **http://127.0.0.1:3000**. Use `GRAPH_API_TOKEN` from the private
+`.env.local` file to sign in. Check `/api/health`: it must report `mode: "live"`
+with both `database.connected` and `graph.connected` true.
+
+- PostgreSQL: `127.0.0.1:5433`, database `fingraph_db`, user `postgres`.
+- Neo4j Bolt: `bolt://127.0.0.1:7687`, database/user `neo4j`.
+- Neo4j Browser: **http://127.0.0.1:7474**.
+- Passwords are in the ignored `.env.local` file. Native installation paths
+  are in ignored `.data/live/runtime.json`; database files are in `.data/live`.
+- The live database starts with the supplied fictional seed. Records added
+  only in the PGlite demo remain in `.data/demo`; they are not migrated.
+
+Ctrl+C stops the app and worker. To stop the database services afterwards:
+
+```sh
+npm run live:stop
+```
+
+To start only the database services, use `npm run live:db`. The native launcher
+requires this machine's existing local installation metadata. On another
+machine, use Docker below or configure existing PostgreSQL/Neo4j databases;
+local credentials and database installations are deliberately not committed.
+
+## Use an online Neo4j instance (Aura)
+
+Use an empty database or an instance dedicated to FinGraph: reconciliation
+updates/removes FinGraph `Account` nodes and `TRANSFER` relationships.
+Update only the Neo4j settings in your ignored `.env.local` file:
+
+```dotenv
+NEO4J_URI="neo4j+s://YOUR-INSTANCE.databases.neo4j.io"
+NEO4J_USERNAME="neo4j"
+NEO4J_PASSWORD="YOUR-INSTANCE-PASSWORD"
+NEO4J_DATABASE="YOUR-DATABASE-NAME"
+FINGRAPH_DEMO="false"
+```
+
+Keep `DATABASE_URL` and `GRAPH_API_TOKEN` unchanged. The URI is the driver
+connection address, not the Aura console's HTTPS page. `neo4j+s` enables TLS
+with certificate validation. Store the password only in the private environment
+file, not in source code or chat. Use the exact database name shown in your
+Aura credentials or Query database selector; do not assume it is `neo4j`.
+
+Stop the running app/worker before changing credentials, then check the
+connection without writing any graph data:
+
+```sh
+npm run neo4j:check
+```
+
+The check reports the configured host, connectivity and record counts without
+printing credentials. Once the destination is verified, this laptop's native
+launcher starts local PostgreSQL, connects to the configured online Neo4j,
+reconciles/synchronizes records and runs the app/worker:
+
+```sh
+npm run live
+```
+
+The launcher skips local Neo4j startup for an external connection URI. The first
+start for a new graph destination reconciles the complete ledger; later starts
+process only queued changes. If a graph is manually cleared or restored, run
+`npm run graph:reconcile` followed by `npm run graph:sync` to repair it. Verify
+`/api/health` reports live mode and both connections. Use Aura's Query tool to
+inspect the online graph. `npm run live:stop` stops only the native local
+services; it does not stop or delete your cloud instance.
+
 ## Full PostgreSQL + Neo4j stack
 
 Requires Docker Desktop with Docker Compose. Stop the local demo before starting

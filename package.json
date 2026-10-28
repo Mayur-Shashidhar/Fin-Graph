@@ -5,6 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "demo": "node scripts/demo.mjs",
+    "live": "node scripts/local-live.mjs",
+    "live:db": "node scripts/local-live.mjs databases",
+    "live:stop": "node scripts/local-live.mjs stop",
+    "neo4j:check": "node scripts/check-neo4j.mjs",
     "setup": "node scripts/setup.mjs",
     "stack": "docker compose --env-file .env.local up --build -d --wait",
     "stack:stop": "docker compose --env-file .env.local stop",

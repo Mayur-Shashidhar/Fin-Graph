@@ -178,6 +178,27 @@ export default function TransactionsPage() {
         cell: ({ row }) => <TransactionIdCell id={row.original.id} />,
       },
       {
+        accessorKey: 'amount',
+        header: () => (
+          <button
+            onClick={() => handleSortToggle('amount')}
+            className="flex items-center gap-1.5 hover:text-white transition-colors ml-auto"
+          >
+            <span>Amount</span>
+            {sortBy === 'amount' ? (
+              sortOrder === 'asc' ? <ArrowUp className="h-3 w-3 text-white" /> : <ArrowDown className="h-3 w-3 text-white" />
+            ) : (
+              <ArrowUpDown className="h-3 w-3 text-neutral-500" />
+            )}
+          </button>
+        ),
+        cell: ({ row }) => (
+          <div className="text-right font-mono font-bold text-white whitespace-nowrap">
+            {formatMoney(row.original.amount, row.original.currency)}
+          </div>
+        ),
+      },
+      {
         accessorKey: 'occurred_at',
         header: () => (
           <button
@@ -241,27 +262,6 @@ export default function TransactionsPage() {
           <span className="rounded bg-neutral-900 px-2 py-0.5 text-[10px] font-mono border border-neutral-800 text-neutral-300">
             {row.original.transaction_type}
           </span>
-        ),
-      },
-      {
-        accessorKey: 'amount',
-        header: () => (
-          <button
-            onClick={() => handleSortToggle('amount')}
-            className="flex items-center gap-1.5 hover:text-white transition-colors ml-auto"
-          >
-            <span>Amount</span>
-            {sortBy === 'amount' ? (
-              sortOrder === 'asc' ? <ArrowUp className="h-3 w-3 text-white" /> : <ArrowDown className="h-3 w-3 text-white" />
-            ) : (
-              <ArrowUpDown className="h-3 w-3 text-neutral-500" />
-            )}
-          </button>
-        ),
-        cell: ({ row }) => (
-          <div className="text-right font-mono font-bold text-white whitespace-nowrap">
-            {formatMoney(row.original.amount, row.original.currency)}
-          </div>
         ),
       },
       {
@@ -493,7 +493,7 @@ export default function TransactionsPage() {
 
       {/* Main Table Card */}
       <Card className="border-neutral-800 bg-neutral-950">
-        <CardContent className="p-0">
+        <CardContent className="p-0!">
           {error ? (
             <div className="py-16 text-center space-y-3">
               <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-900 border border-neutral-700 text-neutral-300">
@@ -526,7 +526,17 @@ export default function TransactionsPage() {
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div>
+              <p id="transaction-scroll-help" className="border-b border-neutral-800 px-4 py-2 text-xs text-neutral-400">
+                Scroll horizontally to view all transaction columns.
+              </p>
+              <div
+                className="overflow-x-auto rounded-b-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-400"
+                role="region"
+                aria-label="Transaction ledger"
+                aria-describedby="transaction-scroll-help"
+                tabIndex={0}
+              >
               <table className="w-full text-left text-xs font-mono">
                 <thead className="border-b border-neutral-800 bg-neutral-900/60 text-neutral-400 uppercase tracking-wider text-[10px]">
                   {table.getHeaderGroups().map((headerGroup) => (
@@ -553,6 +563,7 @@ export default function TransactionsPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </CardContent>

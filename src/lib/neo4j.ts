@@ -12,7 +12,8 @@ export function getGraphDriver(): Driver {
     const env = getNeo4jConfig();
     globalThis.__finGraphNeo4j = neo4j.driver(
       env.NEO4J_URI, neo4j.auth.basic(env.NEO4J_USERNAME, env.NEO4J_PASSWORD),
-      { connectionTimeout: 5000, connectionAcquisitionTimeout: 5000, maxTransactionRetryTime: 5000, maxConnectionPoolSize: 10 },
+      // Cloud routing and TLS setup can exceed five seconds on the first page load.
+      { connectionTimeout: 15000, connectionAcquisitionTimeout: 30000, maxTransactionRetryTime: 15000, maxConnectionPoolSize: 10 },
     );
   }
   return globalThis.__finGraphNeo4j;
@@ -47,7 +48,9 @@ export async function checkGraphHealth() {
   try {
     await graphTransaction('read', async tx => { await tx.run('RETURN 1 AS ping'); });
     return { connected: true, responseTimeMs: Date.now() - start };
-  } catch {
+  } catch (error) {
+    const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : 'configuration-or-runtime-error';
+    console.error('[FinGraph Neo4j health]', code);
     return { connected: false, responseTimeMs: Date.now() - start, error: 'Neo4j is unavailable or not configured' };
   }
 }
